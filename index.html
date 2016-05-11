@@ -1,0 +1,377 @@
+<!doctype html>
+<html>
+<head>
+<title>Tic Tac Toe</title>
+<style>
+
+	body {
+		background-image: url(images/diagonal_fabric.png);
+		background-repeat: repeat;
+		text-align: center;
+		font-family: Palatino;
+		cursor:pointer;
+	}
+
+	h1 {
+		font-size: 40px;
+		font-weight: bold;
+		line-height: 40px;
+	}
+	
+	/* ID - can be used in JavaScript */
+	#container {
+		width: 380px;
+		height: 380px;
+		margin: 0 auto;
+		align-content:center;
+	}
+
+	/* CLASS */
+	.square_3 {
+		float: left;
+		width: 120px;
+		height: 120px;
+		border: 2px solid #383838;
+		font-size: 100px;
+		line-height: 120px;
+		vertical-align: middle;
+		text-align: center;
+	}
+	.square_4 {
+		float: left;
+		width: 90px;
+		height: 90px;
+		border: 2px solid #383838;
+		font-size: 80px;	
+		line-height: 90px;
+		vertical-align: middle;
+		text-align: center;
+	}
+	.square_5 {
+		float: left;
+		width: 70px;
+		height: 70px;
+		border: 2px solid #383838;
+		font-size: 60px;	
+		line-height: 70px;
+		vertical-align: middle;
+		text-align: center;
+	}
+</style>
+<link rel="stylesheet" href="http://code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.css">
+<script src="http://code.jquery.com/jquery-1.11.3.min.js"></script>
+<script src="http://code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.js"></script>
+<script type="text/javascript">
+
+/*************************/
+/* Date: 03/02/2016      */
+/* Function: Tic Tac Toe */
+/* Author: Li-Hao Liu    */
+/*************************/
+
+var TicTacToe = {
+	
+	init: function() {
+
+		// get board size value (jQuery)
+		this.size = parseInt($("input[name='board_size']:checked").val());
+		this.square_num = this.size * this.size;
+		// get game mode value (jQuery)
+		this.mode = $("input[name='game_mode']:checked").val();
+		
+		// keep unused square in empty array
+		this.empty = [];
+		// save record for each player
+		this.board = [];
+		// prior squares for computer
+		this.prior = [];
+		// record winning squares
+		this.winning = [];
+		// continue to play
+		this.cont = true;
+		
+		$("#container").html('');
+		for (i = 0; i < this.square_num; i++) {
+			// create square for each row 
+			$("#container").append("<div id=" + i + " onclick='TicTacToe.clicked(this.id)' class='square_" 
+			+ this.size +"'></div>");
+			// initialize empty and board array
+			this.empty[i] = i.toString();
+			this.board[i] = '';	
+			
+			// Only put size squares on a row 
+			if (((i + 1) % this.size) == 0) {
+				// clear: both - No floating elements allowed on either the left or the right side
+				$("#container").append("<div style='clear: both;'>");
+			}
+		}
+
+		// initialize prior squares - diagonals
+		for (var i = 0; i < this.square_num; i = i + this.size + 1){
+			this.prior.push(i.toString());
+		}
+		for (var i = this.size - 1; i <= this.size * (this.size - 1); i = i + this.size - 1){
+			this.prior.push(i.toString());
+		}
+		// remove duplicate element
+		if(this.square_num % 2 == 1)
+			this.prior.splice(jQuery.inArray(((this.square_num-1)/2).toString(), this.prior), 1);
+		
+		// X makes first move
+		this.player = 'X';
+	},
+
+	/* Called on each square click. Displays correct symbol for the clicked  */
+	/* square, checks if the game is won or has ended in a tie */
+
+	clicked: function(square_id) {
+		if (this.cont) {
+			/* See if this square is empty, if so put an X or O in it  */
+			if ("" == $('#' + square_id).html()) {
+
+				// print player in square
+				if (this.player == 'X') {
+					$('#' + square_id).css("color","#4169E1");
+				} else if (this.player == 'O') {
+					$('#' + square_id).css("color","#DC143C");
+				}
+	
+				$('#' + square_id).text(this.player);
+
+				// delete used square in empty and prior array
+				this.empty.splice(jQuery.inArray(square_id, this.empty), 1);
+				if(jQuery.inArray(square_id, this.prior) != -1)
+					this.prior.splice(jQuery.inArray(square_id, this.prior), 1);
+
+				// record moves
+				this.board[square_id] = this.player;
+			  
+				/* Call predict_win function to see if this move wins the game */
+				currentplayer = this.player;
+				if(this.predict_win(this.board, this.player)){
+					setTimeout(function(){TicTacToe.end_game(currentplayer);},100);
+					return;
+				} else if (this.is_game_tied()){
+					setTimeout(function(){TicTacToe.end_game();},100);
+					return;
+				} else {
+					this.player = (this.player == 'X')? 'O': 'X';
+					
+					// one player mode 
+					if (this.mode == 'one'){
+						
+						var com_square_id;
+						var case_com_win = case_player_win = case_center = case_diagonal = case_random = false;
+						var copy_o, copy_x;
+						var i;
+	
+						// check if computer can win in next move
+						for (i = 0; i < this.empty.length; i++) {
+							copy_o = this.board.slice();
+							copy_o[this.empty[i]] = this.player;
+							if(this.predict_win(copy_o, this.player)) {
+								com_square_id = this.empty[i];
+								case_com_win = true;
+							}
+						} // for loop
+		
+						// check if player can win in next move
+						if (!case_com_win) {
+							for (i = 0; i < this.empty.length; i++) {
+								copy_x = this.board.slice();
+								copy_x[this.empty[i]] = 'X';
+								if(this.predict_win(copy_x, 'X')) {
+									com_square_id = this.empty[i];
+									case_player_win = true;
+								}
+							} // for loop
+						} // endif (!case_com_win)
+						
+						// check if prior square is free
+						if(!case_com_win && !case_player_win && this.prior.length > 0) {
+							// if the number of squares is odd, we can find center point
+							if(jQuery.inArray(((this.square_num-1)/2).toString(), this.prior) != -1) {
+								com_square_id = ((this.square_num-1)/2).toString();
+								case_diagonal = true;
+							} else {
+								com_square_id = this.prior[Math.floor(Math.random()*this.prior.length)];
+								case_diagonal = true;
+							}
+						}
+
+						// randomly select unused square
+						if(!case_com_win && !case_player_win && !case_diagonal) {
+							com_square_id = this.empty[Math.floor(Math.random()*this.empty.length)];
+						}
+				 	 
+						$('#' + com_square_id).css("color","#DC143C");
+						$('#' + com_square_id).text(this.player);
+				  
+						// delete used square in empty and prior array
+						this.empty.splice(jQuery.inArray(com_square_id, this.empty), 1);
+						if(jQuery.inArray(com_square_id, this.prior) != -1)
+							this.prior.splice(jQuery.inArray(com_square_id, this.prior), 1);
+						
+						// record moves
+						this.board[com_square_id] = this.player;
+
+						// computer wins or game is tied
+						currentplayer = this.player;
+						if(this.predict_win(this.board, this.player)) {
+							setTimeout(function(){TicTacToe.end_game(currentplayer);},100);
+							return;
+						} else if (this.is_game_tied()) {
+							setTimeout(function(){TicTacToe.end_game();},100);
+							return;
+						} else {
+							// no win or tie for computer, change player
+							this.player = (this.player == 'X')? 'O': 'X';
+						} // endif (status check for computer)
+					} // endif (one player mode)
+				} //endif (status check for player)
+			} // endif (square is blank)
+		} // endif (keep is true)
+	},
+
+	// check winning
+	predict_win: function(board, player) {
+		
+		row = column = diagonal = true;
+		
+		// check rows
+		for (var i = 0; i <= this.size * (this.size - 1); i = i + this.size) {
+			// need to initialize again
+			row = true;
+			this.winning = [];
+			this.winning[this.winning.length] = i;
+			if(board[i]!=player) {
+				row = false;
+			} else {
+				for (var j = i + 1; j < i + this.size; j++){
+					if(board[j]!=player)
+						row = false;
+					else
+						this.winning[this.winning.length] = j;
+				}
+				if(row)
+					return true;
+			}
+		}
+		
+		// check columns
+		for (var i = 0; i < this.size; i++) {
+			// need to initialize again
+			this.winning = [];
+			this.winning[this.winning.length] = i;
+			column = true;
+			if(board[i]!=player) {
+				column = false;
+			} else {	
+				for (var j = i + this.size; j <= i + this.size * (this.size - 1); j = j + this.size){
+					if(board[j]!=player)
+						column = false;
+					else
+						this.winning[this.winning.length] = j;
+				}
+				if(column)
+					return true;
+			}
+		}
+		
+		// check diagonals
+		this.winning = [];
+		if(board[0]!=player) {
+			diagonal = false;
+		} else {
+			this.winning[this.winning.length] = 0;
+			for (var i = this.size + 1; i < this.square_num; i = i + this.size + 1){
+				if(board[i]!=player)
+					diagonal = false;
+				else
+					this.winning[this.winning.length] = i;
+			}
+			if(diagonal)
+				return true;
+		}
+		// need to initialize again
+		diagonal = true;
+		this.winning = [];
+		if(board[this.size-1]!=player) {
+			diagonal = false;
+		} else {
+			this.winning[this.winning.length] = this.size - 1;
+			for (var i = (this.size - 1) * 2; i <= this.size * (this.size - 1); i = i + this.size - 1){
+				if(board[i]!=player)
+					diagonal = false;
+				else
+					this.winning[this.winning.length] = i;
+			}
+			if(diagonal)
+				return true;
+		}
+	}, // predict_win
+	
+	/* Check if empty array is empty */
+	is_game_tied: function() {
+		if(this.empty.length == 0){
+			return true;
+		} else {
+			return false;
+		}
+	},
+
+	/* Display message and restart if requested */
+	/* if parameter is empty, it means Tie Game */
+	end_game: function(winner) {
+		if (winner) {
+			// change background color of winning square
+			for (var i = 0; i < this.winning.length; i++){
+				$('#' + this.winning[i]).css("background-color","#90EE90");
+			}
+			msg = winner + ' Won! Play Again?';
+		} else
+			msg =  'Tie Game! Play Again?';
+		restart_game = confirm(msg);
+		if (restart_game){
+			this.init(this.mode);
+		} else {
+			// user not to play
+			this.cont = false;
+		}
+	}
+	
+};
+
+$(document).ready(function(){
+	TicTacToe.init();
+});
+
+</script>
+<meta charset="UTF-8">
+</head>
+
+<body>
+<br>
+<br>
+<h1>Tic Tac Toe</h1>
+
+<fieldset data-role="controlgroup" data-type="horizontal">
+    <input type="radio" name="game_mode" id="radio-choice-1" value="one" onChange="TicTacToe.init()" checked>
+    <label for="radio-choice-1">One Player</label>
+    <input type="radio" name="game_mode" id="radio-choice-2" value="two" onChange="TicTacToe.init()">
+    <label for="radio-choice-2">Two Players</label>
+</fieldset>
+
+<fieldset data-role="controlgroup" data-type="horizontal">
+	<input type="radio" name="board_size" id="radio-view-a" value="3" onChange="TicTacToe.init()" checked />
+	<label for="radio-view-a">3 X 3</label>
+	<input type="radio" name="board_size" id="radio-view-b" value="4" onChange="TicTacToe.init()" />
+	<label for="radio-view-b">4 X 4</label>
+	<input type="radio" name="board_size" id="radio-view-c" value="5" onChange="TicTacToe.init()" />
+	<label for="radio-view-c">5 X 5</label>
+</fieldset>
+
+<div id="container"></div>
+<p>&copy;2016 All Rights To Me Reserved</p>
+</body>
+</html>
